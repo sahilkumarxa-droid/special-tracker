@@ -957,6 +957,14 @@ text-align:center;
     const $ = (sel, root = document) => root.querySelector(sel);
     const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
+    function isDemoUser() {
+      return localStorage.getItem("trackerIsDemo") === "1";
+    }
+
+    function canEdit() {
+      return isDemoUser();
+    }
+
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("sw.js").catch(() => {});
@@ -1167,6 +1175,7 @@ text-align:center;
       const tbody = $("#tableBody");
       tbody.innerHTML = "";
       const target = Number(state.settings.dailyTarget) || 0;
+      const demo = isDemoUser();
 
       days.forEach(date => {
         const key = dateKey(date);
@@ -1176,12 +1185,12 @@ text-align:center;
         const ratio = target > 0 ? Math.min(1, amountNumber / target) : 0;
         const statusText = amountNumber >= target && target > 0 ? "Met" : amountNumber > 0 ? "Short" : "Empty";
         const statusClass = amountNumber >= target && target > 0 ? "good" : amountNumber > 0 ? "warn" : "";
-        const isToday = key === dateKey(new Date());
-        const disabledAttr = isToday ? "" : "disabled";
+        const allowEdit = demo;
+        const disabledAttr = allowEdit ? "" : "disabled";
 
         const row = document.createElement("tr");
         row.dataset.date = key;
-        row.className = isToday ? "" : "locked";
+        row.className = allowEdit ? "" : "locked";
         row.innerHTML = `
           <td>${formatDisplay(date)}</td>
           <td>${formatCurrency(target)}</td>
@@ -1379,8 +1388,13 @@ text-align:center;
         if (!row) return;
         const key = row.dataset.date;
         const input = row.querySelector("input[type='number']");
+        const demo = isDemoUser();
 
         if (event.target.classList.contains("save-btn")) {
+          if (!demo) {
+            toast("Locked for this account.");
+            return;
+          }
           const value = Number(input.value);
           if (!value) {
             toast("Enter an amount first.");
@@ -1396,6 +1410,10 @@ text-align:center;
         }
 
         if (event.target.classList.contains("clear-btn")) {
+          if (!demo) {
+            toast("Locked for this account.");
+            return;
+          }
           input.value = "";
           if (state.entries[key]) {
             delete state.entries[key].amount;
@@ -1409,6 +1427,12 @@ text-align:center;
         if (event.target.type !== "checkbox") return;
         const row = event.target.closest("tr");
         const key = row.dataset.date;
+        const demo = isDemoUser();
+        if (!demo) {
+          toast("Locked for this account.");
+          event.target.checked = !!state.entries[key]?.done;
+          return;
+        }
         if (!state.entries[key]) state.entries[key] = {};
         state.entries[key].done = event.target.checked;
         if (event.target.checked && !state.entries[key].amount) {
@@ -1434,6 +1458,11 @@ text-align:center;
           return;
         }
         const today = dateKey(new Date());
+        const demo = isDemoUser();
+        if (!demo) {
+          toast("Locked for this account.");
+          return;
+        }
         if (!state.entries[today]) state.entries[today] = {};
         state.entries[today].amount = val;
         pushHistory(`Quick saved ${formatCurrency(val)} for ${today}`);
@@ -1466,9 +1495,19 @@ text-align:center;
         URL.revokeObjectURL(url);
       });
 
-      $("#importBtn").addEventListener("click", () => $("#importFile").click());
+      $("#importBtn").addEventListener("click", () => {
+        if (!canEdit()) {
+          toast("Locked for this account.");
+          return;
+        }
+        $("#importFile").click();
+      });
 
       $("#importFile").addEventListener("change", event => {
+        if (!canEdit()) {
+          toast("Locked for this account.");
+          return;
+        }
         const file = event.target.files[0];
         if (!file) return;
         const reader = new FileReader();
@@ -1489,6 +1528,10 @@ text-align:center;
       });
 
       $("#resetBtn").addEventListener("click", () => {
+        if (!canEdit()) {
+          toast("Locked for this account.");
+          return;
+        }
         if (!confirm("Reset all saved data?")) return;
         state.entries = {};
         state.history = [];
@@ -1499,6 +1542,10 @@ text-align:center;
 
       $("#historySearch").addEventListener("input", renderHistory);
       $("#clearHistory").addEventListener("click", () => {
+        if (!canEdit()) {
+          toast("Locked for this account.");
+          return;
+        }
         if (!confirm("Clear history log?")) return;
         state.history = [];
         saveState();
@@ -1507,6 +1554,10 @@ text-align:center;
 
       const dialog = $("#settingsDialog");
       $("#openSettings").addEventListener("click", () => {
+        if (!canEdit()) {
+          toast("Locked for this account.");
+          return;
+        }
         $("#settingOwner").value = state.settings.owner || "";
         $("#settingTarget").value = state.settings.dailyTarget || 0;
         $("#settingCurrency").value = state.settings.currency || DEFAULT_CURRENCY;
@@ -1520,6 +1571,10 @@ text-align:center;
       $("#closeSettings").addEventListener("click", () => dialog.close());
 
       $("#saveSettings").addEventListener("click", () => {
+        if (!canEdit()) {
+          toast("Locked for this account.");
+          return;
+        }
         const start = $("#settingStart").value;
         const end = $("#settingEnd").value;
         if (!start || !end) {
