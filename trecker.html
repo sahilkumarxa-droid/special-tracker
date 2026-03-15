@@ -958,6 +958,7 @@ text-align:center;
     const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
     const ACTIVE_USER_KEY = "trackerActiveUser";
+    const USERS_KEY = "trackerUsers.v1";
 
     function getActiveUser() {
       return (localStorage.getItem(ACTIVE_USER_KEY) || "").trim();
@@ -966,6 +967,28 @@ text-align:center;
     function setActiveUser(user) {
       if (user) localStorage.setItem(ACTIVE_USER_KEY, user);
       else localStorage.removeItem(ACTIVE_USER_KEY);
+    }
+
+    function loadUsers() {
+      let users = {};
+      try {
+        const raw = localStorage.getItem(USERS_KEY);
+        if (raw) users = JSON.parse(raw) || {};
+      } catch (err) {
+        users = {};
+      }
+
+      const legacyUser = localStorage.getItem("trackerUser");
+      const legacyPass = localStorage.getItem("trackerPass");
+      if (legacyUser && legacyPass && !users[legacyUser]) {
+        users[legacyUser] = legacyPass;
+        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+      }
+      return users;
+    }
+
+    function saveUsers(users) {
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
     }
 
     function isDemoUser() {
@@ -1643,12 +1666,10 @@ text-align:center;
     const DEMO_PASS = "demo123";
 
     function ensureDemoAccount() {
-      const existing = localStorage.getItem("trackerUser");
-      const existingPass = localStorage.getItem("trackerPass");
-      if (!existing || !existingPass) {
-        localStorage.setItem("trackerUser", DEMO_USER);
-        localStorage.setItem("trackerPass", DEMO_PASS);
-        localStorage.setItem("trackerIsDemo", "1");
+      const users = loadUsers();
+      if (!users[DEMO_USER]) {
+        users[DEMO_USER] = DEMO_PASS;
+        saveUsers(users);
       }
     }
 
@@ -1661,8 +1682,13 @@ text-align:center;
         return;
       }
 
-      localStorage.setItem("trackerUser", u);
-      localStorage.setItem("trackerPass", p);
+      const users = loadUsers();
+      if (users[u]) {
+        alert("Username already exists");
+        return;
+      }
+      users[u] = p;
+      saveUsers(users);
       localStorage.removeItem("trackerIsDemo");
 
       alert("Account Created");
@@ -1672,10 +1698,10 @@ text-align:center;
       const u = document.getElementById("loginUser").value;
       const p = document.getElementById("loginPass").value;
 
-      const su = localStorage.getItem("trackerUser");
-      const sp = localStorage.getItem("trackerPass");
+      const users = loadUsers();
+      const sp = users[u];
 
-      if (u === su && p === sp) {
+      if (sp && p === sp) {
         setActiveUser(u);
         if (u === DEMO_USER) {
           localStorage.setItem("trackerIsDemo", "1");
@@ -1691,8 +1717,7 @@ text-align:center;
     }
 
     function loginDemo() {
-      localStorage.setItem("trackerUser", DEMO_USER);
-      localStorage.setItem("trackerPass", DEMO_PASS);
+      ensureDemoAccount();
       localStorage.setItem("trackerIsDemo", "1");
       setActiveUser(DEMO_USER);
       loadState();
