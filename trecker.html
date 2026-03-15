@@ -7,11 +7,11 @@
   <meta name="description" content="Special Tracker - premium daily saving tracker with insights, trends, and QR payments.">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
   <title>Special Tracker</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;600&display=swap');
-
     :root {
       --bg: #f7f1e7;
       --ink: #1b1914;
@@ -130,6 +130,30 @@
       box-shadow: 0 8px 18px rgba(15, 92, 78, 0.25);
     }
 
+    .btn-link {
+      border: none;
+      background: var(--accent);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 180ms ease, box-shadow 180ms ease;
+      box-shadow: 0 8px 18px rgba(194, 118, 43, 0.25);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-link:hover { transform: translateY(-1px); }
+
+    .btn-link.ghost {
+      background: #f8efe7;
+      color: var(--ink);
+      box-shadow: none;
+    }
+
     .premium-strip {
       margin-top: 20px;
       background: var(--card);
@@ -181,6 +205,62 @@
       display: flex;
       gap: 12px;
       align-items: flex-start;
+    }
+
+    .app-download {
+      margin-top: 22px;
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px;
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      align-items: center;
+      animation: fadeUp 700ms ease;
+    }
+
+    .app-download h2 {
+      margin: 0 0 6px;
+      font-family: "Fraunces", serif;
+      font-size: 24px;
+    }
+
+    .download-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+      align-items: center;
+    }
+
+    .download-note {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .download-meta {
+      display: grid;
+      gap: 10px;
+    }
+
+    .meta-card {
+      background: #f8efe7;
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .meta-card span {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .meta-card strong {
+      font-size: 16px;
     }
 
     .feature-icon {
@@ -624,6 +704,7 @@ text-align:center;
           <input type="number" id="quickAmount" placeholder="Today's amount" min="0">
           <button class="mini-btn secondary" id="quickSave">Save</button>
         </div>
+        <a class="btn-link ghost" href="#app-download">Get App</a>
         <button class="ghost" id="openSettings">Settings</button>
         <button class="ghost" onclick="logout()">Logout</button>
       </div>
@@ -663,6 +744,33 @@ text-align:center;
             <h4>QR Payments</h4>
             <p>Instant pay cards with your saved QR codes.</p>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="app-download" id="app-download">
+      <div>
+        <span class="pill">Android App</span>
+        <h2>Install Special Tracker</h2>
+        <p>Full-screen access, offline ready, and quick launch from your home screen.</p>
+        <div class="download-actions">
+          <a class="btn-link" href="Special-Tracker-signed.apk" download>Download APK</a>
+          <button class="mini-btn ghost" id="copyApkLink">Copy APK Link</button>
+        </div>
+        <p class="download-note">If download does not start, open the APK link in a new tab.</p>
+      </div>
+      <div class="download-meta">
+        <div class="meta-card">
+          <span>Build</span>
+          <strong>Signed APK</strong>
+        </div>
+        <div class="meta-card">
+          <span>Install</span>
+          <strong>Android 7+</strong>
+        </div>
+        <div class="meta-card">
+          <span>Website</span>
+          <strong>Offline Ready</strong>
         </div>
       </div>
     </section>
@@ -811,8 +919,19 @@ text-align:center;
   <script>
     const STORAGE_KEY = "saving-tracker.v2";
     const DEFAULT_CURRENCY = "\u20B9";
-    const FIXED_START = "2026-06-13";
+    const LEGACY_START = "2026-06-13";
     const FIXED_END = "2026-09-23";
+    const CHART_SRC = "https://cdn.jsdelivr.net/npm/chart.js";
+
+    function todayIso() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    const FIXED_START = todayIso();
 
     const state = {
       settings: {
@@ -832,6 +951,8 @@ text-align:center;
 
     let chartInstance = null;
     let trendChartInstance = null;
+    let chartScriptPromise = null;
+    let activeTab = "dashboard";
 
     const $ = (sel, root = document) => root.querySelector(sel);
     const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -840,6 +961,23 @@ text-align:center;
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("sw.js").catch(() => {});
       });
+    }
+
+    function loadChartJs() {
+      if (window.Chart) return Promise.resolve();
+      if (chartScriptPromise) return chartScriptPromise;
+      chartScriptPromise = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = CHART_SRC;
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => {
+          chartScriptPromise = null;
+          reject(new Error("Chart load failed"));
+        };
+        document.head.appendChild(script);
+      });
+      return chartScriptPromise;
     }
 
     function toast(message) {
@@ -945,6 +1083,16 @@ text-align:center;
       if (end < minEnd) {
         state.settings.endDate = FIXED_END;
         end = minEnd;
+      }
+
+      const today = parseDate(todayIso());
+      if (state.settings.startDate === LEGACY_START) {
+        state.settings.startDate = todayIso();
+        start = today;
+      }
+      if (start < today) {
+        state.settings.startDate = todayIso();
+        start = today;
       }
 
       if (start > end) {
@@ -1088,7 +1236,7 @@ text-align:center;
         card.className = "qr-card";
         card.innerHTML = `
           <h3>${person.name}</h3>
-          <img src="${person.img}" alt="${person.name} QR">
+          <img src="${person.img}" alt="${person.name} QR" loading="lazy" decoding="async">
         `;
         grid.appendChild(card);
       });
@@ -1186,6 +1334,28 @@ text-align:center;
         }
       });
     }
+
+    function renderCharts(days) {
+      const wantsInsights = activeTab === "insights";
+      const wantsGraphs = activeTab === "graphs";
+      if (!wantsInsights && !wantsGraphs) return;
+
+      const run = () => {
+        loadChartJs()
+          .then(() => {
+            if (wantsInsights) renderChart(days);
+            if (wantsGraphs) renderTrendChart(days);
+          })
+          .catch(() => {});
+      };
+
+      if ("requestIdleCallback" in window) {
+        requestIdleCallback(run, { timeout: 1200 });
+      } else {
+        setTimeout(run, 0);
+      }
+    }
+
     function renderAll() {
       const days = getDateRange();
       renderOwner();
@@ -1193,13 +1363,14 @@ text-align:center;
       renderTable(days);
       renderHistory();
       renderQr();
-      renderChart(days);
-      renderTrendChart(days);
+      renderCharts(days);
     }
 
     function setActiveTab(tab) {
+      activeTab = tab;
       $$(".tab-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === tab));
       $$(".panel").forEach(panel => panel.classList.toggle("hidden", panel.id !== `tab-${tab}`));
+      renderCharts(getDateRange());
     }
 
     function bindEvents() {
@@ -1271,6 +1442,19 @@ text-align:center;
         renderAll();
         $("#quickAmount").value = "";
       });
+
+      const copyBtn = $("#copyApkLink");
+      if (copyBtn) {
+        copyBtn.addEventListener("click", async () => {
+          const url = new URL("Special-Tracker-signed.apk", window.location.href).toString();
+          try {
+            await navigator.clipboard.writeText(url);
+            toast("APK link copied.");
+          } catch (err) {
+            window.prompt("Copy APK link:", url);
+          }
+        });
+      }
 
       $("#exportBtn").addEventListener("click", () => {
         const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });

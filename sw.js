@@ -1,5 +1,6 @@
-﻿const CACHE_NAME = "special-tracker-v1";
+const CACHE_NAME = "special-tracker-v4";
 const ASSETS = [
+  "./index.html",
   "./trecker.html",
   "./manifest.json",
   "./sw.js",
@@ -42,4 +43,3 @@ self.addEventListener("fetch", event => {
     )
   );
 });
-
