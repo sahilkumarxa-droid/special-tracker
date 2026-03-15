@@ -960,12 +960,17 @@ text-align:center;
     const ACTIVE_USER_KEY = "trackerActiveUser";
     const USERS_KEY = "trackerUsers.v1";
 
+    function normalizeUser(user) {
+      return (user || "").trim();
+    }
+
     function getActiveUser() {
-      return (localStorage.getItem(ACTIVE_USER_KEY) || "").trim();
+      return normalizeUser(localStorage.getItem(ACTIVE_USER_KEY));
     }
 
     function setActiveUser(user) {
-      if (user) localStorage.setItem(ACTIVE_USER_KEY, user);
+      const clean = normalizeUser(user);
+      if (clean) localStorage.setItem(ACTIVE_USER_KEY, clean);
       else localStorage.removeItem(ACTIVE_USER_KEY);
     }
 
@@ -978,7 +983,7 @@ text-align:center;
         users = {};
       }
 
-      const legacyUser = localStorage.getItem("trackerUser");
+      const legacyUser = normalizeUser(localStorage.getItem("trackerUser"));
       const legacyPass = localStorage.getItem("trackerPass");
       if (legacyUser && legacyPass && !users[legacyUser]) {
         users[legacyUser] = legacyPass;
@@ -1000,7 +1005,7 @@ text-align:center;
     }
 
     function storageKeyFor(user) {
-      const safe = (user || "demo").trim().toLowerCase() || "demo";
+      const safe = normalizeUser(user) || "demo";
       return `${STORAGE_BASE}:${safe}`;
     }
 
@@ -1592,12 +1597,11 @@ text-align:center;
           toast("Locked for this account.");
           return;
         }
-        if (!confirm("Reset all saved data?")) return;
-        state.entries = {};
-        state.history = [];
+        if (!confirm("Reset all saved data for this account?")) return;
+        resetState();
         saveState();
         renderAll();
-        toast("Data reset.");
+        toast("Account data reset.");
       });
 
       $("#historySearch").addEventListener("input", renderHistory);
@@ -1674,7 +1678,7 @@ text-align:center;
     }
 
     function signup() {
-      const u = document.getElementById("signupUser").value;
+      const u = normalizeUser(document.getElementById("signupUser").value);
       const p = document.getElementById("signupPass").value;
 
       if (!u || !p) {
@@ -1695,7 +1699,7 @@ text-align:center;
     }
 
     function login() {
-      const u = document.getElementById("loginUser").value;
+      const u = normalizeUser(document.getElementById("loginUser").value);
       const p = document.getElementById("loginPass").value;
 
       const users = loadUsers();
