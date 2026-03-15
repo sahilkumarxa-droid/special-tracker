@@ -1250,7 +1250,8 @@ text-align:center;
         const ratio = target > 0 ? Math.min(1, amountNumber / target) : 0;
         const statusText = amountNumber >= target && target > 0 ? "Met" : amountNumber > 0 ? "Short" : "Empty";
         const statusClass = amountNumber >= target && target > 0 ? "good" : amountNumber > 0 ? "warn" : "";
-        const allowEdit = demo;
+        const isToday = key === dateKey(new Date());
+        const allowEdit = demo && isToday;
         const disabledAttr = allowEdit ? "" : "disabled";
 
         const row = document.createElement("tr");
@@ -1454,9 +1455,10 @@ text-align:center;
         const key = row.dataset.date;
         const input = row.querySelector("input[type='number']");
         const demo = isDemoUser();
+        const allowEdit = demo && key === dateKey(new Date());
 
         if (event.target.classList.contains("save-btn")) {
-          if (!demo) {
+          if (!allowEdit) {
             toast("Locked for this account.");
             return;
           }
@@ -1475,7 +1477,7 @@ text-align:center;
         }
 
         if (event.target.classList.contains("clear-btn")) {
-          if (!demo) {
+          if (!allowEdit) {
             toast("Locked for this account.");
             return;
           }
@@ -1493,7 +1495,8 @@ text-align:center;
         const row = event.target.closest("tr");
         const key = row.dataset.date;
         const demo = isDemoUser();
-        if (!demo) {
+        const allowEdit = demo && key === dateKey(new Date());
+        if (!allowEdit) {
           toast("Locked for this account.");
           event.target.checked = !!state.entries[key]?.done;
           return;
