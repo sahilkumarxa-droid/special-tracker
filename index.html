@@ -917,7 +917,7 @@ text-align:center;
   <div class="toast" id="toast"></div>
 
   <script>
-    const STORAGE_KEY = "saving-tracker.v2";
+    const STORAGE_BASE = "saving-tracker.v2";
     const DEFAULT_CURRENCY = "\u20B9";
     const LEGACY_START = "2026-06-13";
     const FIXED_END = "2026-09-23";
@@ -957,12 +957,48 @@ text-align:center;
     const $ = (sel, root = document) => root.querySelector(sel);
     const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
+    const ACTIVE_USER_KEY = "trackerActiveUser";
+
+    function getActiveUser() {
+      return (localStorage.getItem(ACTIVE_USER_KEY) || "").trim();
+    }
+
+    function setActiveUser(user) {
+      if (user) localStorage.setItem(ACTIVE_USER_KEY, user);
+      else localStorage.removeItem(ACTIVE_USER_KEY);
+    }
+
     function isDemoUser() {
-      return localStorage.getItem("trackerIsDemo") === "1";
+      return getActiveUser() === DEMO_USER;
     }
 
     function canEdit() {
       return isDemoUser();
+    }
+
+    function storageKeyFor(user) {
+      const safe = (user || "demo").trim().toLowerCase() || "demo";
+      return `${STORAGE_BASE}:${safe}`;
+    }
+
+    function currentStorageKey() {
+      return storageKeyFor(getActiveUser() || DEMO_USER);
+    }
+
+    function resetState() {
+      state.settings = {
+        owner: "Daily Saver",
+        dailyTarget: 300,
+        currency: DEFAULT_CURRENCY,
+        startDate: FIXED_START,
+        endDate: FIXED_END,
+        qrPeople: [
+          { name: "Mansha Devi", img: "1.jpg" },
+          { name: "Sagar Kumar", img: "2.jpg" }
+        ]
+      };
+      state.entries = {};
+      state.history = [];
     }
 
     if ("serviceWorker" in navigator) {
@@ -1058,7 +1094,8 @@ text-align:center;
     }
 
     function loadState() {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      resetState();
+      const stored = localStorage.getItem(currentStorageKey());
       if (!stored) {
         state.settings.startDate = FIXED_START;
         state.settings.endDate = FIXED_END;
@@ -1109,7 +1146,7 @@ text-align:center;
     }
 
     function saveState() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(currentStorageKey(), JSON.stringify(state));
     }
 
     function getDateRange() {
@@ -1639,6 +1676,14 @@ text-align:center;
       const sp = localStorage.getItem("trackerPass");
 
       if (u === su && p === sp) {
+        setActiveUser(u);
+        if (u === DEMO_USER) {
+          localStorage.setItem("trackerIsDemo", "1");
+        } else {
+          localStorage.removeItem("trackerIsDemo");
+        }
+        loadState();
+        renderAll();
         document.getElementById("authScreen").style.display = "none";
       } else {
         alert("Wrong login");
@@ -1649,12 +1694,16 @@ text-align:center;
       localStorage.setItem("trackerUser", DEMO_USER);
       localStorage.setItem("trackerPass", DEMO_PASS);
       localStorage.setItem("trackerIsDemo", "1");
+      setActiveUser(DEMO_USER);
+      loadState();
+      renderAll();
       document.getElementById("loginUser").value = DEMO_USER;
       document.getElementById("loginPass").value = DEMO_PASS;
       document.getElementById("authScreen").style.display = "none";
     }
 
     function logout() {
+      setActiveUser("");
       document.getElementById("authScreen").style.display = "flex";
     }
 
