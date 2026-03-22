@@ -1,7 +1,7 @@
 ﻿{
   "name": "Special Tracker",
   "short_name": "Tracker",
-  "start_url": "./trecker.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f7f1e7",
