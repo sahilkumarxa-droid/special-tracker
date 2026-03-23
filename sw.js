@@ -2,6 +2,7 @@ const CACHE_NAME = "special-tracker-v10";
 const ASSETS = [
   "./index.html",
   "./trecker.html",
+  "./app.js",
   "./manifest.json",
   "./sw.js",
   "./1.jpg",
